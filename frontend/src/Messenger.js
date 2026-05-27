@@ -1,0 +1,800 @@
+import { useState, useEffect } from 'react'
+
+const statusColor = { online: '#1D9E75', away: '#EF9F27', offline: '#ccc' }
+
+function UserItem({ user, currentUser, openChat, onClick, onToggleFav, isFav, onContextMenu}) {
+  return (
+    <div
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', cursor: 'pointer', background: openChat?.id === user.id ? '#f0effe' : 'transparent' }}
+      onMouseEnter={(e) => e.currentTarget.style.background = openChat?.id === user.id ? '#f0effe' : '#f8f8f8'}
+      onMouseLeave={(e) => e.currentTarget.style.background = openChat?.id === user.id ? '#f0effe' : 'transparent'}
+    >
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '500', color: '#3C3489' }}>
+          {user.name[0]}
+        </div>
+        <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', borderRadius: '50%', background: statusColor[user.status] || '#ccc', border: '2px solid white' }}></span>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <p style={{ fontSize: '13px', fontWeight: '500' }}>{user.name}</p>
+          {user.unread_count > 0 && (
+            <span style={{ background: '#534AB7', color: 'white', borderRadius: '10px', padding: '1px 5px', fontSize: '10px' }}>
+              {user.unread_count}
+            </span>
+          )}
+        </div>
+        <p style={{ fontSize: '11px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {user.last_message || `${user.dept} · ${user.role}`}
+        </p>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleFav() }}
+        style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', color: isFav ? '#EF9F27' : '#ddd', flexShrink: 0 }}>
+          {isFav ? '★' : '☆'}
+      </button>
+    </div>
+  )
+}
+
+function Messenger({ currentUser, onFloatChat, showCreateRoom, onCloseCreateRoom, onOpenCreateRoom, initialTab, onTabLoaded, sideChat, onOpenChat, onCloseChat, sideRoom, onOpenRoom, onCloseRoom,  onFavChange, favRefreshTick }) {
+  const [users, setUsers] = useState([])
+
+  const fetchUsers = () => {
+    fetch(`${process.env.REACT_APP_API_URL}/users/${currentUser.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const sorted = data.sort((a, b) => {
+            const order = { online: 0, away: 1, offline: 2 }
+            return (order[a.status] ?? 2) - (order[b.status] ?? 2)
+          })
+          setUsers(sorted)
+        }
+      })
+  }
+
+const fetchRooms = () => {
+  fetch(`${process.env.REACT_APP_API_URL}/rooms/${currentUser.id}`)
+    .then((res) => res.json())
+    .then((data) => {
+      console.log('rooms 응답:', data)
+      if (Array.isArray(data)) setRooms(data)
+    })
+}
+
+const fetchFavorites = () => {
+  fetch(`${process.env.REACT_APP_API_URL}/favorites/${currentUser.id}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!Array.isArray(data)) return
+      setFavUsers(data.filter(f => f.type === 'user').map(f => f.target_id))
+      setFavRooms(data.filter(f => f.type === 'room').map(f => f.target_id))
+      setFavDepts(data.filter(f => f.type === 'dept').map(f => f.target_name))
+    })
+}
+
+
+
+  const toggleFavUser = (userId) => {
+    const isFav = favUsers.includes(userId)
+    if (isFav) {
+      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, type: 'user', target_id: userId })
+      }).then(() => { fetchFavorites(); onFavChange?.() })
+    } else {
+      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, type: 'user', target_id: userId })
+      }).then(() => { fetchFavorites(); onFavChange?.() })
+    }
+  }
+
+  const toggleFavDept = (dept) => {
+    const isFav = favDepts.includes(dept)
+    if (isFav) {
+      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, type: 'dept', target_name: dept })
+      }).then(() => fetchFavorites())
+    } else {
+      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, type: 'dept', target_name: dept })
+      }).then(() => fetchFavorites())
+    }
+  }
+
+  const toggleCollapse = (dept) => {
+    setCollapsedDepts(prev =>
+      prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+    )
+  }
+  const [activeTab, setActiveTab] = useState('chat')
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+      if (onTabLoaded) onTabLoaded()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab])
+  const [favUsers, setFavUsers] = useState([])
+  const [favRooms, setFavRooms] = useState([])
+  const [favDepts, setFavDepts] = useState([])
+  const [collapsedDepts, setCollapsedDepts] = useState([])
+  const [selectedDept, setSelectedDept] = useState('전체')
+  const [openChat, setOpenChat] = useState(null)
+  const [rooms, setRooms] = useState([])
+  const [announcements, setAnnouncements] = useState([])
+  const [selectedAnn, setSelectedAnn] = useState(null)
+  const [showCreateAnn, setShowCreateAnn] = useState(false)
+  const [annForm, setAnnForm] = useState({ title: '', content: '', is_urgent: false, urgent_days: 1 })
+  const [userReactions, setUserReactions] = useState({})
+  const [searchQuery, setSearchQuery] = useState('')
+  const [annSearch, setAnnSearch] = useState('')
+
+  const searchedUsers = searchQuery.trim()
+  ? users.filter(u => u.name.includes(searchQuery) || u.dept.includes(searchQuery))
+  : null
+
+  const filteredAnns = annSearch.trim()
+  ? announcements.filter(a =>
+      a.title.includes(annSearch) || a.content?.includes(annSearch)
+    )
+  : announcements
+
+  const fetchAnnouncements = () => {
+    fetch(`${process.env.REACT_APP_API_URL}/announcements`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setAnnouncements(data) })
+  }
+
+  useEffect(() => {
+    fetchUsers()
+    fetchRooms()
+    fetchFavorites()
+    fetchAnnouncements()
+    const usersInterval = setInterval(fetchUsers, 3000)
+    const roomsInterval = setInterval(fetchRooms, 3000)
+    const annInterval = setInterval(fetchAnnouncements, 3000)
+    const favInterval = setInterval(fetchFavorites, 3000)
+    return () => {
+      clearInterval(usersInterval)
+      clearInterval(roomsInterval)
+      clearInterval(annInterval)
+      clearInterval(favInterval)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleReact = (annId, reaction) => {
+    const key = `${annId}_${reaction}`
+    const isReacted = userReactions[key]
+
+    // 현재 내가 어떤 공감을 눌렀는지 파악
+    const myCurrentReaction = Object.keys(userReactions).find(k =>
+      k.startsWith(`${annId}_`) && userReactions[k]
+    )?.replace(`${annId}_`, '')
+
+    // 즉시 UI 업데이트
+    setUserReactions(prev => {
+      const newReactions = { ...prev }
+      Object.keys(newReactions).forEach(k => {
+        if (k.startsWith(`${annId}_`)) delete newReactions[k]
+      })
+      if (!isReacted) newReactions[key] = true
+      return newReactions
+    })
+
+    setAnnouncements(prev => prev.map(ann => {
+      if (ann.id !== annId) return ann
+      const newReactionCounts = { ...ann.reactions }
+
+      // 기존 공감 카운트 감소
+      if (myCurrentReaction) {
+        newReactionCounts[myCurrentReaction] = Math.max(0, (newReactionCounts[myCurrentReaction] || 0) - 1)
+        if (newReactionCounts[myCurrentReaction] === 0) delete newReactionCounts[myCurrentReaction]
+      }
+
+      // 새 공감 카운트 증가 (같은 버튼 다시 누르면 취소)
+      if (!isReacted) {
+        newReactionCounts[reaction] = (newReactionCounts[reaction] || 0) + 1
+      }
+
+      return { ...ann, reactions: newReactionCounts }
+    }))
+
+    // 백엔드 동기화
+    fetch(`${process.env.REACT_APP_API_URL}/announcements/${annId}/react?user_id=${currentUser.id}&reaction=${reaction}`, {
+      method: 'POST'
+    })
+  }
+
+  const handleCreateAnn = () => {
+    if (!annForm.title.trim() || !annForm.content.trim()) return
+    fetch(`${process.env.REACT_APP_API_URL}/announcements/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...annForm, author_id: currentUser.id })
+    }).then(() => {
+      fetchAnnouncements()
+      setShowCreateAnn(false)
+      setAnnForm({ title: '', content: '', is_urgent: false, urgent_days: 1 })
+    })
+  }
+
+  const toggleFavRoom = (roomId) => {
+    const isFav = favRooms.includes(roomId)
+    if (isFav) {
+      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, type: 'room', target_id: roomId })
+      }).then(() => { fetchFavorites(); onFavChange?.() })
+    } else {
+      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, type: 'room', target_id: roomId })
+      }).then(() => { fetchFavorites(); onFavChange?.() })
+    }
+  }
+
+const [sharedFiles, setSharedFiles] = useState([])
+
+useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL}/messages/shared/${currentUser.id}`)
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setSharedFiles(data) })
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [])
+
+useEffect(() => {
+  if (favRefreshTick > 0) fetchFavorites()
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [favRefreshTick])
+
+  const openRoom = sideRoom
+  const setOpenRoom = (room) => room ? onOpenRoom?.(room) : onCloseRoom?.()
+  const [newRoomName, setNewRoomName] = useState('')
+  const [roomNameError, setRoomNameError] = useState('')
+  const [memberError, setMemberError] = useState('')
+  const [selectedMembers, setSelectedMembers] = useState([])
+  const [collapsedModalDepts, setCollapsedModalDepts] = useState(
+  [...new Set(users.map(u => u.dept))]
+)
+
+
+  return (
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden', height: '100%' }}>
+
+      {/* 왼쪽 - 탭 + 목록 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'white', borderRight: openChat ? '1px solid #eee' : 'none' }}>
+
+        {/* 탭 */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #eee', flexShrink: 0 }}>
+          {[
+            { key: 'chat', label: '친구' },
+            { key: 'rooms', label: '협업방' },
+            { key: 'notice', label: '공지' },
+            { key: 'files', label: '공유 파일' },
+          ].map((tab) => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              style={{ flex: 1, padding: '10px', border: 'none', background: 'transparent', fontSize: '12px', cursor: 'pointer', color: activeTab === tab.key ? '#534AB7' : '#888', borderBottom: activeTab === tab.key ? '2px solid #534AB7' : 'none', fontWeight: activeTab === tab.key ? '500' : '400' }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 친구 탭 */}
+        {activeTab === 'chat' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* 검색창 */}
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid #eee', flexShrink: 0 }}>
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="이름, 부서 검색..."
+                style={{ width: '100%', padding: '7px 10px', border: '1px solid #eee', borderRadius: '8px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#f8f8f8' }}
+              />
+            </div>
+
+            {searchedUsers ? (
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                {searchedUsers.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#aaa', textAlign: 'center', padding: '30px' }}>검색 결과가 없어요</p>
+                ) : searchedUsers.map(user => (
+                  <UserItem key={user.id} user={user} currentUser={currentUser} openChat={openChat}
+                    isFav={favUsers.includes(user.id)}
+                    onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user); setUsers(prev => prev.map(u => u.id === user.id ? { ...u, unread_count: 0 } : u)) }}
+                    onToggleFav={() => toggleFavUser(user.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflow: 'auto' }}>
+
+                {/* 부서 필터 탭 */}
+                <div style={{ display: 'flex', gap: '4px', padding: '8px', flexWrap: 'wrap', borderBottom: '1px solid #eee' }}>
+                  {['전체', ...favDepts, ...[...new Set(users.map(u => u.dept))].filter(d => !favDepts.includes(d))].map(dept => (
+                    <button key={dept} onClick={() => setSelectedDept(dept)}
+                      style={{ padding: '3px 8px', borderRadius: '10px', border: 'none', fontSize: '11px', cursor: 'pointer', background: selectedDept === dept ? '#534AB7' : '#f0f0f0', color: selectedDept === dept ? 'white' : '#555' }}>
+                      {favDepts.includes(dept) && dept !== '전체' ? '⭐ ' : ''}{dept}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 전체 탭 */}
+                {selectedDept === '전체' && (
+                  <>
+                    {users.filter(u => favUsers.includes(u.id)).length > 0 && (
+                      <div>
+                        <div style={{ padding: '6px 12px', fontSize: '11px', color: '#aaa', fontWeight: '500' }}>⭐ 즐겨찾기</div>
+                        {users.filter(u => favUsers.includes(u.id)).map(user => (
+                          <UserItem key={`fav-${user.id}`} user={user} currentUser={currentUser} openChat={openChat}
+                            isFav={true}
+                            onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user); setUsers(prev => prev.map(u => u.id === user.id ? { ...u, unread_count: 0 } : u)) }}
+                            onToggleFav={() => toggleFavUser(user.id)}
+                          />
+                        ))}
+                        <div style={{ height: '1px', background: '#eee', margin: '4px 0' }} />
+                      </div>
+                    )}
+
+                    {[...new Set(users.map(u => u.dept))]
+                      .sort((a, b) => {
+                        if (a === currentUser.dept) return -1
+                        if (b === currentUser.dept) return 1
+                        return 0
+                      })
+                      .map(dept => (
+                        <div key={dept}>
+                          <div onClick={() => toggleCollapse(dept)}
+                            style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', cursor: 'pointer', background: '#f8f8f8' }}>
+                            <span style={{ fontSize: '11px', color: '#888', flex: 1, fontWeight: '500' }}>
+                              {collapsedDepts.includes(dept) ? '▶' : '▼'} {dept}
+                              {dept === currentUser.dept && (
+                                <span style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 6px', background: '#534AB7', color: 'white', borderRadius: '8px' }}>내 부서</span>
+                              )}
+                            </span>
+                            <button onClick={(e) => { e.stopPropagation(); toggleFavDept(dept) }}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px' }}>
+                              {favDepts.includes(dept) ? '⭐' : '☆'}
+                            </button>
+                          </div>
+                          {!collapsedDepts.includes(dept) && users.filter(u => u.dept === dept).map(user => (
+                            <UserItem key={user.id} user={user} currentUser={currentUser} openChat={openChat}
+                              isFav={favUsers.includes(user.id)}
+                              onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user) }}
+                              onToggleFav={() => toggleFavUser(user.id)}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                  </>
+                )}
+
+                {/* 부서 필터 */}
+                {selectedDept !== '전체' && (
+                  <div>
+                    {users.filter(u => u.dept === selectedDept)
+                      .sort((a, b) => favUsers.includes(b.id) - favUsers.includes(a.id))
+                      .map(user => (
+                        <UserItem key={user.id} user={user} currentUser={currentUser} openChat={openChat}
+                          isFav={favUsers.includes(user.id)}
+                          onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user) }}
+                          onToggleFav={() => toggleFavUser(user.id)}
+                        />
+                      ))}
+                  </div>
+                )}
+
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {activeTab === 'rooms' && (
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid #eee', flexShrink: 0 }}>
+              <button onClick={() => onOpenCreateRoom?.()}
+                style={{ width: '100%', padding: '8px', background: '#534AB7', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '500' }}>
+                + 협업방 만들기
+              </button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto' }}>
+            {[...rooms].sort((a, b) => favRooms.includes(b.id) - favRooms.includes(a.id)).map((room) => (
+              <div
+                key={room.id}
+                onClick={() => {
+                  setOpenRoom(room)
+                  setOpenChat(null)
+                  onCloseChat?.()
+                  setRooms(prev => prev.map(r => r.id === room.id ? { ...r, unread_count: 0 } : r))
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', background: openRoom?.id === room.id ? '#f0effe' : 'transparent' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = openRoom?.id === room.id ? '#f0effe' : '#f8f8f8'}
+                onMouseLeave={(e) => e.currentTarget.style.background = openRoom?.id === room.id ? '#f0effe' : 'transparent'}
+              >
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>🏠</div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: '500' }}>{room.name}</p>
+                    {room.unread_count > 0 && (
+                      <span style={{ background: '#534AB7', color: 'white', borderRadius: '10px', padding: '1px 5px', fontSize: '10px' }}>
+                        {room.unread_count}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {room.lastMessage || `${room.members?.length || 0}명`}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleFavRoom(room.id) }}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px', color: favRooms.includes(room.id) ? '#EF9F27' : '#ddd', flexShrink: 0 }}>
+                  {favRooms.includes(room.id) ? '★' : '☆'}
+                </button>
+              </div>
+            ))}
+
+            </div>
+          </div>
+        )}
+      
+
+        {/* 공지 탭 */}
+        {activeTab === 'notice' && (
+          <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+
+            {/* 상단 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <p style={{ fontSize: '13px', color: '#888' }}>공지사항 {filteredAnns.length}개</p>
+              {['manager', 'admin', 'super_admin'].includes(currentUser.grade) && (
+                <button onClick={() => setShowCreateAnn(true)}
+                  style={{ padding: '6px 12px', background: '#534AB7', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                  + 공지 작성
+                </button>
+              )}
+            </div>
+
+            {/* 검색창 */}
+            <div style={{ marginBottom: '12px' }}>
+              <input
+                value={annSearch}
+                onChange={e => setAnnSearch(e.target.value)}
+                placeholder="공지사항 검색..."
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #eee', borderRadius: '8px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#f8f8f8' }}
+              />
+            </div>
+
+            {/* 긴급 공지 */}
+            {filteredAnns.filter(a => a.is_urgent).length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <p style={{ fontSize: '11px', color: '#e53e3e', fontWeight: '500', marginBottom: '6px' }}>🚨 긴급 공지</p>
+                {filteredAnns.filter(a => a.is_urgent).map(ann => (
+                  <div key={ann.id}
+                    onClick={() => setSelectedAnn(ann.id)}
+                    style={{ background: '#FFF5F5', border: '1px solid #FEB2B2', borderRadius: '10px', padding: '12px 14px', marginBottom: '6px', cursor: 'pointer' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#FED7D7'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#FFF5F5'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '11px', background: '#e53e3e', color: 'white', padding: '1px 6px', borderRadius: '6px', fontWeight: '500' }}>긴급</span>
+                      <p style={{ fontSize: '13px', fontWeight: '500' }}>{ann.title}</p>
+                    </div>
+                    <p style={{ fontSize: '11px', color: '#888' }}>{ann.author} · {ann.created_at}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 일반 공지 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {filteredAnns.filter(a => !a.is_urgent).map(ann => (
+                <div key={ann.id}
+                  onClick={() => setSelectedAnn(ann.id)}
+                  style={{ background: 'white', border: '1px solid #eee', borderRadius: '10px', padding: '12px 14px', cursor: 'pointer' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8f8f8'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    {ann.was_urgent && (
+                      <span style={{ fontSize: '10px', background: '#f0f0f0', color: '#888', padding: '1px 6px', borderRadius: '6px' }}>긴급해제</span>
+                    )}
+                    <p style={{ fontSize: '13px', fontWeight: '500' }}>{ann.title}</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: '11px', color: '#aaa' }}>{ann.author} · {ann.created_at}</p>
+                    {Object.keys(ann.reactions || {}).length > 0 && (
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {Object.entries(ann.reactions).map(([r, count]) => (
+                          <span key={r} style={{ fontSize: '11px', background: '#f0f0f0', padding: '1px 6px', borderRadius: '8px' }}>{r} {count}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 공지 상세 모달 */}
+            {selectedAnn && (() => {
+              // eslint-disable-next-line no-unused-vars
+              const ann = filteredAnns.find(a => a.id === selectedAnn)
+              if (!ann) return null
+              return (
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={() => setSelectedAnn(null)}>
+                <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '420px', display: 'flex', flexDirection: 'column', gap: '14px' }}
+                  onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {ann.is_urgent && <span style={{ fontSize: '11px', background: '#e53e3e', color: 'white', padding: '2px 8px', borderRadius: '6px' }}>긴급</span>}
+                    {!ann.is_urgent && ann.was_urgent && <span style={{ fontSize: '11px', background: '#f0f0f0', color: '#888', padding: '2px 8px', borderRadius: '6px' }}>긴급해제</span>}
+                    <p style={{ fontSize: '16px', fontWeight: '600' }}>{ann.title}</p>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#aaa' }}>{ann.author} · {ann.created_at}</p>
+                  <div style={{ height: '1px', background: '#eee' }} />
+                  <p style={{ fontSize: '13px', color: '#555', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>{ann.content}</p>
+                  <div style={{ height: '1px', background: '#eee' }} />
+
+                  {/* 공감 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p style={{ fontSize: '12px', color: '#888' }}>공감</p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {['👍', '❤️', '👀', '✅', '😮'].map(r => {
+                        const key = `${ann.id}_${r}`
+                        const count = ann.reactions?.[r] || 0
+                        const reacted = userReactions[key]
+                        return (
+                          <button key={r}
+                            onClick={() => handleReact(selectedAnn, r)}
+                            style={{ padding: '6px 12px', border: `1px solid ${reacted ? '#534AB7' : '#eee'}`, borderRadius: '20px', background: reacted ? '#f0effe' : 'white', cursor: 'pointer', fontSize: '13px' }}>
+                            {r} {count > 0 && count}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <button onClick={() => setSelectedAnn(null)}
+                    style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#888' }}>
+                    닫기
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
+
+            {/* 공지 작성 모달 */}
+            {showCreateAnn && (
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={() => setShowCreateAnn(false)}>
+                <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '420px', display: 'flex', flexDirection: 'column', gap: '14px' }}
+                  onClick={e => e.stopPropagation()}>
+                  <p style={{ fontSize: '15px', fontWeight: '500' }}>공지 작성</p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', color: '#888' }}>제목</label>
+                      <input value={annForm.title} onChange={e => setAnnForm(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="공지 제목 입력"
+                        style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '12px', color: '#888' }}>내용</label>
+                      <textarea value={annForm.content} onChange={e => setAnnForm(prev => ({ ...prev, content: e.target.value }))}
+                        placeholder="공지 내용 입력" rows={5}
+                        style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px', outline: 'none', resize: 'vertical' }} />
+                    </div>
+
+                    {/* 긴급 공지 */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: annForm.is_urgent ? '#FFF5F5' : '#f8f8f8', borderRadius: '8px', border: `1px solid ${annForm.is_urgent ? '#FEB2B2' : '#eee'}` }}>
+                      <input type="checkbox" id="urgent" checked={annForm.is_urgent}
+                        onChange={e => setAnnForm(prev => ({ ...prev, is_urgent: e.target.checked }))} />
+                      <label htmlFor="urgent" style={{ fontSize: '13px', cursor: 'pointer', flex: 1 }}>🚨 긴급 공지로 설정</label>
+                      {annForm.is_urgent && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <select value={annForm.urgent_days} onChange={e => setAnnForm(prev => ({ ...prev, urgent_days: parseInt(e.target.value) }))}
+                            style={{ padding: '4px 8px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '12px', outline: 'none' }}>
+                            <option value={1}>1일</option>
+                            <option value={2}>2일</option>
+                            <option value={3}>3일</option>
+                          </select>
+                          <span style={{ fontSize: '12px', color: '#888' }}>후 해제</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => { setShowCreateAnn(false); setAnnForm({ title: '', content: '', is_urgent: false, urgent_days: 1 }) }}
+                      style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#888' }}>
+                      취소
+                    </button>
+                    <button onClick={handleCreateAnn}
+                      style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '8px', background: annForm.is_urgent ? '#e53e3e' : '#534AB7', cursor: 'pointer', fontSize: '13px', color: 'white', fontWeight: '500' }}>
+                      {annForm.is_urgent ? '🚨 긴급 공지 올리기' : '공지 올리기'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* 공유 파일 탭 */}
+        {activeTab === 'files' && (
+          <div style={{ flex: 1, overflow: 'auto', padding: '8px' }}>
+            <p style={{ fontSize: '11px', color: '#aaa', padding: '4px 8px', marginBottom: '4px' }}>최근 공유된 파일</p>
+              {sharedFiles.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#aaa', textAlign: 'center', padding: '20px' }}>공유된 파일이 없어요</p>
+              ) : sharedFiles.map((file) => (
+                  <div key={file.message_id}
+                      style={{ padding: '10px', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px', border: '1px solid #eee', background: 'white' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f8f8'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '14px' }}>📎</span>
+                          <span style={{ fontSize: '12px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{file.file_name}</span>
+                          <button onClick={() => {
+                              fetch(`${process.env.REACT_APP_API_URL}/user-files`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ user_id: currentUser.id, file_id: file.file_id })
+                              }).then(() => alert('내 워크스페이스에 추가됐어요!'))
+                          }}
+                          style={{ padding: '3px 8px', border: '1px solid #ddd', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '11px', color: '#534AB7', flexShrink: 0 }}>
+                              ➕
+                          </button>
+                      </div>
+                      <p style={{ fontSize: '10px', color: '#aaa' }}>{file.sender} → {file.room_name} · {file.created_at}</p>
+                  </div>
+              ))}
+          </div>
+        )}
+      </div>
+
+            {/* 협업방 만들기 모달 */}
+            {showCreateRoom && (
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '320px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <p style={{ fontSize: '15px', fontWeight: '500' }}>협업방 만들기</p>
+
+                  {/* 방 이름 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', color: '#888' }}>방 이름</label>
+                    <input
+                      value={newRoomName}
+                      onChange={(e) => { setNewRoomName(e.target.value); setRoomNameError('') }}
+                      placeholder="협업방 이름 입력..."
+                      style={{ padding: '8px 12px', border: `1px solid ${roomNameError ? '#e53e3e' : '#ddd'}`, borderRadius: '8px', fontSize: '13px', outline: 'none' }}
+                    />
+                    {roomNameError && <p style={{ fontSize: '11px', color: '#e53e3e', marginTop: '4px' }}>{roomNameError}</p>}
+                  </div>
+
+                  {/* 친구 선택 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '12px', color: '#888' }}>참여 인원 선택</label>
+                    {memberError && <p style={{ fontSize: '11px', color: '#e53e3e' }}>{memberError}</p>}
+                    {[...new Set(users.filter(u => u.id !== currentUser.id).map(u => u.dept))].map(dept => {
+                      const deptUsers = users.filter(u => u.dept === dept && u.id !== currentUser.id)
+                      const allSelected = deptUsers.every(u => selectedMembers.includes(u.name))
+
+                      return (
+                        <div key={dept}>
+                          {/* 부서 헤더 */}
+                          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', background: '#f8f8f8', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px' }}>
+                            <span
+                              onClick={() => setCollapsedModalDepts(prev =>
+                                prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+                              )}
+                              style={{ fontSize: '12px', fontWeight: '500', color: '#555', flex: 1 }}>
+                              {collapsedModalDepts.includes(dept) ? '▶' : '▼'} {dept} ({deptUsers.length}명)
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (allSelected) {
+                                  setSelectedMembers(prev => prev.filter(m => !deptUsers.map(u => u.name).includes(m)))
+                                } else {
+                                  setSelectedMembers(prev => [...new Set([...prev, ...deptUsers.map(u => u.name)])])
+                                }
+                              }}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '11px', color: allSelected ? '#534AB7' : '#aaa' }}>
+                              {allSelected ? '전체 해제' : '전체 선택'}
+                            </button>
+                          </div>
+
+                            {/* 부서원 목록 - 접혀있으면 안 보임 */}
+                            {!collapsedModalDepts.includes(dept) && deptUsers.map((user) => (
+                            <div key={user.id}
+                              onClick={() => setSelectedMembers((prev) =>
+                                prev.includes(user.name)
+                                  ? prev.filter((m) => m !== user.name)
+                                  : [...prev, user.name]
+                              )}
+                              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px 7px 20px', borderRadius: '8px', cursor: 'pointer', border: selectedMembers.includes(user.name) ? '1px solid #534AB7' : '1px solid #eee', background: selectedMembers.includes(user.name) ? '#f0effe' : 'white', marginBottom: '4px' }}
+                            >
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#EEEDFE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#3C3489' }}>
+                                {user.name[0]}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '13px', fontWeight: '500' }}>{user.name}</p>
+                                <p style={{ fontSize: '11px', color: '#aaa' }}>{user.role}</p>
+                              </div>
+                              {selectedMembers.includes(user.name) && <span style={{ color: '#534AB7', fontSize: '14px' }}>✓</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* 버튼 */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => { onCloseCreateRoom(); setNewRoomName(''); setSelectedMembers([]); setRoomNameError(''); setMemberError('') }}    
+                      style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#888' }}>
+                      취소
+                    </button>
+                    <button
+                      onClick={() => {
+                          if (!newRoomName.trim()) {
+                            setRoomNameError('협업방 이름을 입력해주세요!')
+                            return
+                          }
+                          if (selectedMembers.length === 0) {
+                            setMemberError('참여 인원을 선택해주세요!')
+                            return
+                          }
+                          setRoomNameError('')
+                          setMemberError('')
+                          const memberIds = users
+                            .filter((u) => selectedMembers.includes(u.name))
+                            .map((u) => u.id)
+
+                          fetch(`${process.env.REACT_APP_API_URL}/rooms/create`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              name: newRoomName,
+                              member_ids: [currentUser.id, ...memberIds]
+                            })
+                          })
+                          .then((res) => res.json())
+                          .then((data) => {
+                            const newRoom = {
+                              id: data.room_id,
+                              name: newRoomName,
+                              members: [currentUser.name, ...selectedMembers],
+                              lastMessage: '협업방이 생성되었습니다.'
+                            }
+                            setRooms((prev) => [...prev, newRoom])
+                            setOpenRoom(newRoom)
+                            onCloseCreateRoom()
+                            setNewRoomName('')
+                            setSelectedMembers([])
+                          })
+                      }}
+                      style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '8px', background: '#534AB7', cursor: 'pointer', fontSize: '13px', color: 'white', fontWeight: '500' }}>
+                      만들기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+    </div>
+  )
+}
+
+export default Messenger
