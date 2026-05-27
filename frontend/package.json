@@ -25,7 +25,7 @@
     "eject": "react-scripts eject",
     "electron": ".\\node_modules\\.bin\\electron .",
     "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && .\\node_modules\\.bin\\electron . --no-sandbox\"",
-    "dist": "npm run build && .\\node_modules\\.bin\\electron-builder --publish never"
+    "dist": "npm run build && .\\node_modules\\.bin\\electron-builder --publish always"
   },
   "eslintConfig": {
     "extends": [
@@ -69,7 +69,8 @@
     "publish": {
       "provider": "github",
       "owner": "Hanekl",
-      "repo": "filesync"
+      "repo": "filesync",
+      "releaseType": "release"
     }
   }
 }
