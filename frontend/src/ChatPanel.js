@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { getApiUrl, getWsUrl } from './config'
 
 const typeIcon = { pdf: '📄', doc: '📝', xls: '📊', ppt: '📑', default: '📎' }
 
@@ -10,18 +11,18 @@ useEffect(() => {
   let ws
 
   // 1단계: DM방 ID 가져오기
-  fetch(`${process.env.REACT_APP_API_URL}/dm/${currentUser.id}/${user.id}`)
+  fetch(`${getApiUrl()}/dm/${currentUser.id}/${user.id}`)
     .then((res) => res.json())
     .then((data) => {
       const roomId = data.room_id
 
       // 2단계: WebSocket 연결
-      ws = new WebSocket(`${process.env.REACT_APP_WS_URL}/ws/${roomId}/${currentUser.id}`)
+      ws = new WebSocket(`${getWsUrl()}/ws/${roomId}/${currentUser.id}`)
 
       ws.onopen = () => {
         console.log('채팅 연결됨!')
         // 읽음 처리
-        fetch(`${process.env.REACT_APP_API_URL}/messages/read/${roomId}/${currentUser.id}`, {
+        fetch(`${getApiUrl()}/messages/read/${roomId}/${currentUser.id}`, {
           method: 'POST'
         })
       }
@@ -49,7 +50,7 @@ useEffect(() => {
       wsRef.current = ws
 
       // 3단계: 이전 메시지 불러오기
-      fetch(`${process.env.REACT_APP_API_URL}/messages/${roomId}`)
+      fetch(`${getApiUrl()}/messages/${roomId}`)
         .then((res) => res.json())
         .then((msgs) => {
           if (!Array.isArray(msgs)) return
@@ -81,9 +82,9 @@ useEffect(() => {
 
   useEffect(() => {
       if (activeTab !== 'files') return
-      fetch(`${process.env.REACT_APP_API_URL}/dm/${currentUser.id}/${user.id}`)
+      fetch(`${getApiUrl()}/dm/${currentUser.id}/${user.id}`)
           .then(r => r.json())
-          .then(data => fetch(`${process.env.REACT_APP_API_URL}/messages/${data.room_id}`))
+          .then(data => fetch(`${getApiUrl()}/messages/${data.room_id}`))
           .then(r => r.json())
           .then(msgs => {
               if (!Array.isArray(msgs)) return
@@ -237,7 +238,7 @@ useEffect(() => {
                             </div>
                             {!isMine && (
                                 <button onClick={() => {
-                                    fetch(`${process.env.REACT_APP_API_URL}/user-files`, {
+                                    fetch(`${getApiUrl()}/user-files`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ user_id: currentUser.id, file_id: msg.file_id })
@@ -348,7 +349,7 @@ useEffect(() => {
                   <p style={{ fontSize: '11px', color: '#aaa' }}>{file.sender} · {file.time}</p>
                 </div>
                 <button onClick={() => {
-                    fetch(`${process.env.REACT_APP_API_URL}/user-files`, {
+                    fetch(`${getApiUrl()}/user-files`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ user_id: currentUser.id, file_id: file.file_id })

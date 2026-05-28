@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl} from './config'
 
 function HRManagement({ currentUser }) {
   const [activeTab, setActiveTab] = useState('accounts')
@@ -7,13 +8,13 @@ function HRManagement({ currentUser }) {
   const [selectedUser, setSelectedUser] = useState(null)
 
   const fetchDepartments = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/departments`)
+    fetch(`${getApiUrl()}/departments`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setDepartments(data) })
   }
 
   const fetchJobTitles = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/jobtitles`)
+    fetch(`${getApiUrl()}/jobtitles`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setJobTitles(data) })
   }
@@ -47,7 +48,7 @@ function HRManagement({ currentUser }) {
   })
 
   const fetchUsers = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/users/all`)
+    fetch(`${getApiUrl()}/users/all`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setUsers(data) })
   }
@@ -220,7 +221,7 @@ const UserCard = ({ user, actions, onClick }) => (
                               onChange={(e) => {
                                 const newGrade = e.target.value
                                 confirm(`${user.name}님의 역할을 ${newGrade}로 변경할까요?`, () => {
-                                  fetch(`${process.env.REACT_APP_API_URL}/users/grade/${user.id}`, {
+                                  fetch(`${getApiUrl()}/users/grade/${user.id}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ grade: newGrade })
@@ -274,7 +275,7 @@ const UserCard = ({ user, actions, onClick }) => (
                               onChange={(e) => {
                                 const newDept = e.target.value
                                 confirm(`${user.name}님을 ${newDept}으로 이동할까요?`, () => {
-                                  fetch(`${process.env.REACT_APP_API_URL}/users/dept/${user.id}`, {
+                                  fetch(`${getApiUrl()}/users/dept/${user.id}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ dept: newDept })
@@ -312,7 +313,7 @@ const UserCard = ({ user, actions, onClick }) => (
                           actions={
                             <button
                               onClick={() => confirm(`${user.name}님을 퇴사 처리할까요?`, () => {
-                                fetch(`${process.env.REACT_APP_API_URL}/users/resign/${user.id}`, { method: 'PUT' })
+                                fetch(`${getApiUrl()}/users/resign/${user.id}`, { method: 'PUT' })
                                   .then(() => { fetchUsers(); showToast(`${user.name}님이 퇴사 처리되었습니다.`) })
                               })}
                               style={{ padding: '5px 12px', border: '1px solid #e53e3e', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '12px', color: '#e53e3e' }}>
@@ -350,7 +351,7 @@ const UserCard = ({ user, actions, onClick }) => (
                         <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '8px', background: '#f0f0f0', color: '#aaa' }}>퇴사</span>
                           <button
                             onClick={() => confirm(`${user.name}님의 계정을 완전히 삭제할까요?\n복구가 불가능해요!`, () => {
-                              fetch(`${process.env.REACT_APP_API_URL}/users/delete/${user.id}`, { method: 'DELETE' })
+                              fetch(`${getApiUrl()}/users/delete/${user.id}`, { method: 'DELETE' })
                                 .then(() => { fetchUsers(); showToast(`${user.name}님의 계정이 삭제되었습니다.`) })
                             })}
                             style={{ padding: '4px 10px', border: '1px solid #e53e3e', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '11px', color: '#e53e3e' }}>
@@ -402,7 +403,7 @@ const UserCard = ({ user, actions, onClick }) => (
                   onClick={() => {
                     const newPw = Math.random().toString(36).slice(-8)
                     confirm(`${selectedUser.name}님의 임시 비밀번호를 발급할까요?`, () => {
-                      fetch(`${process.env.REACT_APP_API_URL}/users/reset-password/${selectedUser.id}`, {
+                      fetch(`${getApiUrl()}/users/reset-password/${selectedUser.id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ new_password: newPw })
@@ -564,7 +565,7 @@ const UserCard = ({ user, actions, onClick }) => (
                     <button
                       onClick={() => {
                         Promise.all(newAccounts.map(acc =>
-                          fetch(`${process.env.REACT_APP_API_URL}/users/create`, {
+                          fetch(`${getApiUrl()}/users/create`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(acc)

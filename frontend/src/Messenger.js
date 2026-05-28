@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from './config'
 
 const statusColor = { online: '#1D9E75', away: '#EF9F27', offline: '#ccc' }
 
@@ -43,7 +44,7 @@ function Messenger({ currentUser, onFloatChat, showCreateRoom, onCloseCreateRoom
   const [users, setUsers] = useState([])
 
   const fetchUsers = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/users/${currentUser.id}`)
+    fetch(`${getApiUrl()}/users/${currentUser.id}`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -57,7 +58,7 @@ function Messenger({ currentUser, onFloatChat, showCreateRoom, onCloseCreateRoom
   }
 
 const fetchRooms = () => {
-  fetch(`${process.env.REACT_APP_API_URL}/rooms/${currentUser.id}`)
+  fetch(`${getApiUrl()}/rooms/${currentUser.id}`)
     .then((res) => res.json())
     .then((data) => {
       console.log('rooms 응답:', data)
@@ -66,7 +67,7 @@ const fetchRooms = () => {
 }
 
 const fetchFavorites = () => {
-  fetch(`${process.env.REACT_APP_API_URL}/favorites/${currentUser.id}`)
+  fetch(`${getApiUrl()}/favorites/${currentUser.id}`)
     .then(r => r.json())
     .then(data => {
       if (!Array.isArray(data)) return
@@ -81,13 +82,13 @@ const fetchFavorites = () => {
   const toggleFavUser = (userId) => {
     const isFav = favUsers.includes(userId)
     if (isFav) {
-      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+      fetch(`${getApiUrl()}/favorites`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, type: 'user', target_id: userId })
       }).then(() => { fetchFavorites(); onFavChange?.() })
     } else {
-      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+      fetch(`${getApiUrl()}/favorites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, type: 'user', target_id: userId })
@@ -98,13 +99,13 @@ const fetchFavorites = () => {
   const toggleFavDept = (dept) => {
     const isFav = favDepts.includes(dept)
     if (isFav) {
-      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+      fetch(`${getApiUrl()}/favorites`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, type: 'dept', target_name: dept })
       }).then(() => fetchFavorites())
     } else {
-      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+      fetch(`${getApiUrl()}/favorites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, type: 'dept', target_name: dept })
@@ -151,7 +152,7 @@ const fetchFavorites = () => {
   : announcements
 
   const fetchAnnouncements = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/announcements`)
+    fetch(`${getApiUrl()}/announcements`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setAnnouncements(data) })
   }
@@ -212,14 +213,14 @@ const fetchFavorites = () => {
     }))
 
     // 백엔드 동기화
-    fetch(`${process.env.REACT_APP_API_URL}/announcements/${annId}/react?user_id=${currentUser.id}&reaction=${reaction}`, {
+    fetch(`${getApiUrl()}/announcements/${annId}/react?user_id=${currentUser.id}&reaction=${reaction}`, {
       method: 'POST'
     })
   }
 
   const handleCreateAnn = () => {
     if (!annForm.title.trim() || !annForm.content.trim()) return
-    fetch(`${process.env.REACT_APP_API_URL}/announcements/create`, {
+    fetch(`${getApiUrl()}/announcements/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...annForm, author_id: currentUser.id })
@@ -233,13 +234,13 @@ const fetchFavorites = () => {
   const toggleFavRoom = (roomId) => {
     const isFav = favRooms.includes(roomId)
     if (isFav) {
-      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+      fetch(`${getApiUrl()}/favorites`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, type: 'room', target_id: roomId })
       }).then(() => { fetchFavorites(); onFavChange?.() })
     } else {
-      fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+      fetch(`${getApiUrl()}/favorites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, type: 'room', target_id: roomId })
@@ -250,7 +251,7 @@ const fetchFavorites = () => {
 const [sharedFiles, setSharedFiles] = useState([])
 
 useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/messages/shared/${currentUser.id}`)
+    fetch(`${getApiUrl()}/messages/shared/${currentUser.id}`)
         .then(r => r.json())
         .then(data => { if (Array.isArray(data)) setSharedFiles(data) })
 // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -648,7 +649,7 @@ useEffect(() => {
                           <span style={{ fontSize: '14px' }}>📎</span>
                           <span style={{ fontSize: '12px', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{file.file_name}</span>
                           <button onClick={() => {
-                              fetch(`${process.env.REACT_APP_API_URL}/user-files`, {
+                              fetch(`${getApiUrl()}/user-files`, {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ user_id: currentUser.id, file_id: file.file_id })
@@ -763,7 +764,7 @@ useEffect(() => {
                             .filter((u) => selectedMembers.includes(u.name))
                             .map((u) => u.id)
 
-                          fetch(`${process.env.REACT_APP_API_URL}/rooms/create`, {
+                          fetch(`${getApiUrl()}/rooms/create`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({

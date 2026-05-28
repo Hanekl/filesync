@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from './config'
 
 function SystemSettings({ currentUser }) {
   const [activeTab, setActiveTab] = useState('roles')
@@ -14,19 +15,19 @@ function SystemSettings({ currentUser }) {
   const [showTitleModal, setShowTitleModal] = useState(false)
 
   const fetchDepartments = () => {
-  fetch(`${process.env.REACT_APP_API_URL}/departments`)
+  fetch(`${getApiUrl()}/departments`)
     .then(r => r.json())
     .then(data => { if (Array.isArray(data)) setDepartments(data) })
 }
 
   const fetchJobTitles = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/jobtitles`)
+    fetch(`${getApiUrl()}/jobtitles`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setJobTitles(data) })
   }
 
     const fetchRoles = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/roles`)
+    fetch(`${getApiUrl()}/roles`)
         .then(r => r.json())
         .then(data => {
         if (Array.isArray(data)) {
@@ -38,7 +39,7 @@ function SystemSettings({ currentUser }) {
     }
 
 useEffect(() => {
-  fetch(`${process.env.REACT_APP_API_URL}/roles/init`, { method: 'POST' })
+  fetch(`${getApiUrl()}/roles/init`, { method: 'POST' })
     .then(() => fetchRoles())
   fetchDepartments()
   fetchJobTitles()
@@ -50,7 +51,7 @@ useEffect(() => {
   const handleCreateDept = () => {
     if (!newDeptName.trim()) { setDeptError('부서명을 입력해주세요!'); return }
     const autoKey = `dept_${Date.now()}`
-    fetch(`${process.env.REACT_APP_API_URL}/departments/create`, {
+    fetch(`${getApiUrl()}/departments/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: autoKey, name: newDeptName })
@@ -66,7 +67,7 @@ useEffect(() => {
 
   const handleCreateTitle = () => {
   if (!newTitle.trim()) { setTitleError('직책명을 입력해주세요!'); return }
-  fetch(`${process.env.REACT_APP_API_URL}/jobtitles/create`, {
+  fetch(`${getApiUrl()}/jobtitles/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: newTitle, role: newTitleRole })
@@ -129,7 +130,7 @@ useEffect(() => {
                     Object.entries(roleNames)
                     .filter(([key]) => key !== 'guest')
                     .map(([key, name]) =>
-                        fetch(`${process.env.REACT_APP_API_URL}/roles/${key}`, {
+                        fetch(`${getApiUrl()}/roles/${key}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ display_name: name })
@@ -167,7 +168,7 @@ useEffect(() => {
                     <button
                       onClick={() => {
                         if (window.confirm(`${dept.name} 부서를 삭제할까요?`)) {
-                          fetch(`${process.env.REACT_APP_API_URL}/departments/${dept.key}`, { method: 'DELETE' })
+                          fetch(`${getApiUrl()}/departments/${dept.key}`, { method: 'DELETE' })
                             .then(() => fetchDepartments())
                         }
                       }}
@@ -232,7 +233,7 @@ useEffect(() => {
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '8px', background: '#f0f0f0', color: '#555' }}>{title.role}</span>
                     <button
                       onClick={() => {
-                        fetch(`${process.env.REACT_APP_API_URL}/jobtitles/${title.id}`, { method: 'DELETE' })
+                        fetch(`${getApiUrl()}/jobtitles/${title.id}`, { method: 'DELETE' })
                           .then(() => fetchJobTitles())
                       }}
                       style={{ padding: '4px 10px', border: '1px solid #e53e3e', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '11px', color: '#e53e3e' }}>

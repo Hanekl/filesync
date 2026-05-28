@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getApiUrl} from './config'
 
 function AddMember({ onClose }) {
   const [form, setForm] = useState({ name: '', dept: '', role: '', count: 1 })
@@ -9,7 +10,7 @@ function AddMember({ onClose }) {
   const handleCreate = () => {
     if (!form.name.trim() || !form.dept.trim() || !form.role.trim()) return
     setLoading(true)
-    fetch(`${process.env.REACT_APP_API_URL}/users/bulk-create`, {
+    fetch(`${getApiUrl()}/users/bulk-create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: form.name, dept: form.dept, role: form.role, count: form.count })

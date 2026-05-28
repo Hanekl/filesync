@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from './config'
 
-const API = `${process.env.REACT_APP_API_URL}` 
+const API = `${getApiUrl()}` 
 
 function getTypeIcon(name) {
   if (!name) return '📎'

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getApiUrl } from './config'
 
 function Onboarding({ currentUser, onComplete }) {
   const [step, setStep] = useState(1)
@@ -30,7 +31,7 @@ function Onboarding({ currentUser, onComplete }) {
 
   const handleComplete = () => {
     if (!validate()) return
-    fetch(`${process.env.REACT_APP_API_URL}/users/onboarding/${currentUser.id}`, {
+    fetch(`${getApiUrl()}/users/onboarding/${currentUser.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

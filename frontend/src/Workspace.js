@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import { getApiUrl } from './config'
 import StarterKit from '@tiptap/starter-kit'
 import MyFolders from './MyFolders'
 import Schedule from './Schedule'
@@ -47,7 +48,7 @@ function getIcon(name) {
   useEffect(() => {
     const today = new Date()
     const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
-    fetch(`${process.env.REACT_APP_API_URL}/schedules/${currentUser.id}`)
+    fetch(`${getApiUrl()}/schedules/${currentUser.id}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data))
@@ -60,7 +61,7 @@ function getIcon(name) {
   }, [])
 
   const fetchMemos = useCallback(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/memos/${currentUser.id}`)
+    fetch(`${getApiUrl()}/memos/${currentUser.id}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setMemos(data) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,7 +71,7 @@ function getIcon(name) {
     if (!memo) return
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
-      fetch(`${process.env.REACT_APP_API_URL}/memos/${memo.id}`, {
+      fetch(`${getApiUrl()}/memos/${memo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: form.title, content: form.content, color: form.color })
@@ -95,8 +96,8 @@ function getIcon(name) {
   // 최근 대화 갱신 함수
   const fetchRecentItems = useCallback(() => {
     Promise.all([
-      fetch(`${process.env.REACT_APP_API_URL}/users/${currentUser.id}`).then(r => r.json()),
-      fetch(`${process.env.REACT_APP_API_URL}/rooms/${currentUser.id}`).then(r => r.json())
+      fetch(`${getApiUrl()}/users/${currentUser.id}`).then(r => r.json()),
+      fetch(`${getApiUrl()}/rooms/${currentUser.id}`).then(r => r.json())
     ]).then(([users, rooms]) => {
       const dms = Array.isArray(users) ? users.filter(u => u.last_message).map(u => ({ ...u, type: 'dm', sortKey: u.last_message_at || '' })) : []
       const roomItems = Array.isArray(rooms) ? rooms.filter(r => r.lastMessage).map(r => ({ ...r, type: 'room', sortKey: r.last_message_at || '' })) : []
@@ -121,10 +122,10 @@ function getIcon(name) {
   }, [])
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/announcements?limit=3`)
+    fetch(`${getApiUrl()}/announcements?limit=3`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setAnnouncements(data) })
-    fetch(`${process.env.REACT_APP_API_URL}/user-files/${currentUser.id}`)
+    fetch(`${getApiUrl()}/user-files/${currentUser.id}`)
     .then(r => r.json())
     .then(data => {
       if (Array.isArray(data))
@@ -161,13 +162,13 @@ function getIcon(name) {
 
   const handleSaveMemo = () => {
     if (selectedMemo) {
-      fetch(`${process.env.REACT_APP_API_URL}/memos/${selectedMemo.id}`, {
+      fetch(`${getApiUrl()}/memos/${selectedMemo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: memoForm.title, content: memoForm.content, color: memoForm.color })
       }).then(() => fetchMemos())
     } else {
-      fetch(`${process.env.REACT_APP_API_URL}/memos/create`, {
+      fetch(`${getApiUrl()}/memos/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: currentUser.id, title: memoForm.title, content: memoForm.content, color: memoForm.color })
@@ -180,7 +181,7 @@ function getIcon(name) {
 
   const handleDeleteMemo = () => {
     if (!selectedMemo) return
-    fetch(`${process.env.REACT_APP_API_URL}/memos/${selectedMemo.id}`, { method: 'DELETE' })
+    fetch(`${getApiUrl()}/memos/${selectedMemo.id}`, { method: 'DELETE' })
       .then(() => {
         fetchMemos()
         setSelectedMemo(undefined)
@@ -349,7 +350,7 @@ function getIcon(name) {
               <button
                   onClick={() => {
                     const form = { title: '', content: '', color: '#FAEEDA' }
-                    fetch(`${process.env.REACT_APP_API_URL}/memos/create`, {
+                    fetch(`${getApiUrl()}/memos/create`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ user_id: currentUser.id, title: '', content: '', color: '#FAEEDA' })

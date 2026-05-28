@@ -1,6 +1,6 @@
 {
   "name": "filesync",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "main": "electron.js",
   "homepage": "./",
@@ -62,7 +62,6 @@
     "extraMetadata": {
       "main": "electron.js"
     },
-    "asar": false,
     "win": {
       "target": "portable"
     },

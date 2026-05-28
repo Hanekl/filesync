@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getApiUrl } from './config'
 
 function Profile({ user, onBack, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -24,7 +25,7 @@ function Profile({ user, onBack, onUpdate }) {
 
   const handleSaveProfile = () => {
     if (!form.name.trim()) { setErrors({ name: '이름을 입력해주세요' }); return }
-    fetch(`${process.env.REACT_APP_API_URL}/users/profile/${user.id}`, {
+    fetch(`${getApiUrl()}/users/profile/${user.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: form.name, phone: form.phone, email: form.email, username: form.username })
@@ -40,7 +41,7 @@ function Profile({ user, onBack, onUpdate }) {
     if (!pwForm.current_password) { setErrors({ current_password: '현재 비밀번호를 입력해주세요' }); return }
     if (!pwForm.new_password) { setErrors({ new_password: '새 비밀번호를 입력해주세요' }); return }
     if (pwForm.new_password !== pwForm.confirm_password) { setErrors({ confirm_password: '비밀번호가 일치하지 않아요' }); return }
-    fetch(`${process.env.REACT_APP_API_URL}/users/password/${user.id}`, {
+    fetch(`${getApiUrl()}/users/password/${user.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ current_password: pwForm.current_password, new_password: pwForm.new_password })

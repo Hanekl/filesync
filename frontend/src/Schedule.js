@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl } from './config'
 
 
 function Schedule({ currentUser, onNavigate }) {
@@ -23,13 +24,13 @@ function Schedule({ currentUser, onNavigate }) {
   }
 
   const fetchSchedules = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/schedules/${currentUser.id}`)
+    fetch(`${getApiUrl()}/schedules/${currentUser.id}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setSchedules(data) })
   }
 
   const fetchTags = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/schedule-tags/${currentUser.id}`)
+    fetch(`${getApiUrl()}/schedule-tags/${currentUser.id}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setTags(data) })
   }
@@ -51,8 +52,8 @@ function Schedule({ currentUser, onNavigate }) {
     if (!form.title.trim()) return
     const method = editingSchedule ? 'PUT' : 'POST'
     const url = editingSchedule
-      ? `${process.env.REACT_APP_API_URL}/schedules/${editingSchedule.id}`
-      : `${process.env.REACT_APP_API_URL}/schedules`
+      ? `${getApiUrl()}/schedules/${editingSchedule.id}`
+      : `${getApiUrl()}/schedules`
     fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -66,7 +67,7 @@ function Schedule({ currentUser, onNavigate }) {
   }
 
   const handleToggleDone = (s) => {
-    fetch(`${process.env.REACT_APP_API_URL}/schedules/${s.id}/done`, { method: 'POST' })
+    fetch(`${getApiUrl()}/schedules/${s.id}/done`, { method: 'POST' })
       .then(() => fetchSchedules())
   }
 
@@ -74,7 +75,7 @@ function Schedule({ currentUser, onNavigate }) {
     setConfirmModal({
       message: '일정을 삭제할까요?',
       onConfirm: () => {
-        fetch(`${process.env.REACT_APP_API_URL}/schedules/${id}`, { method: 'DELETE' })
+        fetch(`${getApiUrl()}/schedules/${id}`, { method: 'DELETE' })
           .then(() => { fetchSchedules(); setConfirmModal(null) })
       }
     })
@@ -82,7 +83,7 @@ function Schedule({ currentUser, onNavigate }) {
 
   const handleAddTag = (form, callback) => {
     if (!form.name.trim()) return
-    fetch(`${process.env.REACT_APP_API_URL}/schedule-tags`, {
+    fetch(`${getApiUrl()}/schedule-tags`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: currentUser.id, name: form.name, color: form.color })

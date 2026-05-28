@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import { getApiUrl} from './config'
 
 const MEMO_COLORS = ['#FAEEDA', '#E1F5EE', '#EEEDFE', '#FFF5F5', '#E8F4FD', '#F5F5F5']
 
@@ -36,7 +37,7 @@ function MemoPanel({ memo, currentUser, onClose, onHeaderMouseDown, isFloating, 
   }
 
   const handleSave = (form = memoForm) => {
-    fetch(`${process.env.REACT_APP_API_URL}/memos/${memo.id}`, {
+    fetch(`${getApiUrl()}/memos/${memo.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: form.title, content: form.content, color: form.color })

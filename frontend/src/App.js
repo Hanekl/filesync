@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getApiUrl} from './config'
 import Login from './Login'
 import Profile from './Profile'
 import Messenger from './Messenger'
@@ -33,7 +34,7 @@ function App() {
 
   useEffect(() => {
     if (!currentUser) return
-    fetch(`${process.env.REACT_APP_API_URL}/user-files/${currentUser.id}`)
+    fetch(`${getApiUrl()}/user-files/${currentUser.id}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setWorkspaceFiles(data) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,10 +61,10 @@ function App() {
       const now = Date.now()
       if (now - lastActive < 60000) return
       lastActive = now
-      fetch(`${process.env.REACT_APP_API_URL}/users/active/${currentUser.id}`, { method: 'POST' })
+      fetch(`${getApiUrl()}/users/active/${currentUser.id}`, { method: 'POST' })
     }
     const handleUnload = () => {
-      navigator.sendBeacon(`${process.env.REACT_APP_API_URL}/users/logout/${currentUser.id}`)
+      navigator.sendBeacon(`${getApiUrl()}/users/logout/${currentUser.id}`)
     }
     window.addEventListener('mousemove', updateActive)
     window.addEventListener('keydown', updateActive)
@@ -86,7 +87,7 @@ function App() {
   const tabs = getTabs()
 
   const fetchFavorites = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/favorites/${currentUser?.id}`)
+    fetch(`${getApiUrl()}/favorites/${currentUser?.id}`)
       .then(r => r.json())
       .then(data => {
         if (!Array.isArray(data)) return
@@ -135,7 +136,7 @@ function App() {
             </button>
             <button
               onClick={() => {
-                fetch(`${process.env.REACT_APP_API_URL}/users/logout/${currentUser.id}`, { method: 'POST' })
+                fetch(`${getApiUrl()}/users/logout/${currentUser.id}`, { method: 'POST' })
                 setCurrentUser(null)
               }}
               style={{ padding: '5px 12px', border: '1px solid #eee', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#888' }}>
@@ -232,7 +233,7 @@ function App() {
                 isFav={favUsers.includes(sideChat?.id)}
                 onToggleFav={() => {
                   const isFav = favUsers.includes(sideChat.id)
-                  fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+                  fetch(`${getApiUrl()}/favorites`, {
                     method: isFav ? 'DELETE' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: currentUser.id, type: 'user', target_id: sideChat.id })
@@ -261,7 +262,7 @@ function App() {
                       isFav={favRooms.includes(sideRoom?.id)}
                       onToggleFav={() => {
                         const isFav = favRooms.includes(sideRoom.id)
-                        fetch(`${process.env.REACT_APP_API_URL}/favorites`, {
+                        fetch(`${getApiUrl()}/favorites`, {
                           method: isFav ? 'DELETE' : 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ user_id: currentUser.id, type: 'room', target_id: sideRoom.id })

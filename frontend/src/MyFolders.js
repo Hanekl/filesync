@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getApiUrl } from './config'
 
-const API = `${process.env.REACT_APP_API_URL}` 
+const API = `${getApiUrl()}` 
 const typeIcon = { pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📑', pptx: '📑', default: '📎' }
 
 function getIcon(name) {

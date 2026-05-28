@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { getApiUrl, getWsUrl } from './config'
 
 const typeIcon = { pdf: '📄', doc: '📝', xls: '📊', ppt: '📑', default: '📎' }
 
@@ -7,11 +8,11 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
   const wsRef = useRef(null)
 
   useEffect(() => {
-    const ws = new WebSocket(`${process.env.REACT_APP_WS_URL}/ws/${room.id}/${currentUser.id}`)
+    const ws = new WebSocket(`${getWsUrl()}/ws/${room.id}/${currentUser.id}`)
 
     ws.onopen = () => {
       console.log('협업방 연결됨!')
-      fetch(`${process.env.REACT_APP_API_URL}/messages/read/${room.id}/${currentUser.id}`, {
+      fetch(`${getApiUrl()}/messages/read/${room.id}/${currentUser.id}`, {
         method: 'POST'
       })
     }
@@ -38,7 +39,7 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
 
     wsRef.current = ws
 
-    fetch(`${process.env.REACT_APP_API_URL}/messages/${room.id}`)
+    fetch(`${getApiUrl()}/messages/${room.id}`)
       .then((res) => res.json())
       .then((data) => {
         if (!Array.isArray(data)) return
@@ -72,7 +73,7 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
   // 파일 탭 API 연결
   useEffect(() => {
     if (activeTab !== 'files') return
-    fetch(`${process.env.REACT_APP_API_URL}/messages/${room.id}`)
+    fetch(`${getApiUrl()}/messages/${room.id}`)
       .then(r => r.json())
       .then(msgs => {
         if (!Array.isArray(msgs)) return
@@ -240,7 +241,7 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
                             </div>
                             {!isMine && msg.file_id && (
                               <button onClick={() => {
-                                fetch(`${process.env.REACT_APP_API_URL}/user-files`, {
+                                fetch(`${getApiUrl()}/user-files`, {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({ user_id: currentUser.id, file_id: msg.file_id })
@@ -350,7 +351,7 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
                     </div>
                     {file.file_id && (
                       <button onClick={() => {
-                        fetch(`${process.env.REACT_APP_API_URL}/user-files`, {
+                        fetch(`${getApiUrl()}/user-files`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ user_id: currentUser.id, file_id: file.file_id })
