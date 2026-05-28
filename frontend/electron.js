@@ -22,11 +22,37 @@ function createWindow() {
   return win
 }
 
+  const gotTheLock = app.requestSingleInstanceLock()
+
+  if (!gotTheLock) {
+    app.quit()
+  } else {
+    app.on('second-instance', () => {
+      if (win) {
+        if (win.isMinimized()) win.restore()
+        win.focus()
+      }
+    })
+  }
+
 app.whenReady().then(() => {
   const win = createWindow()
 
   if (app.isPackaged) {
+    console.log('업데이트 체크 시작')
     autoUpdater.checkForUpdatesAndNotify()
+
+    autoUpdater.on('checking-for-update', () => {
+      console.log('업데이트 확인 중...')
+    })
+
+    autoUpdater.on('update-not-available', () => {
+      console.log('최신 버전이에요')
+    })
+
+    autoUpdater.on('error', (err) => {
+      console.log('업데이트 오류:', err)
+    })
 
     autoUpdater.on('update-available', () => {
       win.webContents.executeJavaScript(`alert('새 업데이트가 있어요! 다운로드 중...')`)
