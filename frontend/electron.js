@@ -2,6 +2,8 @@ const { app, BrowserWindow } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 
+console.log('isPackaged:', app.isPackaged)
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
