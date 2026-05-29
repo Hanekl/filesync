@@ -3,7 +3,7 @@ import { getApiUrl } from './config'
 
 const statusColor = { online: '#1D9E75', away: '#EF9F27', offline: '#ccc' }
 
-function UserItem({ user, currentUser, openChat, onClick, onToggleFav, isFav, onContextMenu}) {
+function UserItem({ user, currentUser, openChat, onClick, onToggleFav, isFav, onContextMenu, isNotify, onToggleNotify}) { 
   return (
     <div
       onClick={onClick}
@@ -31,6 +31,10 @@ function UserItem({ user, currentUser, openChat, onClick, onToggleFav, isFav, on
           {user.last_message || `${user.dept} · ${user.role}`}
         </p>
       </div>
+      <button onClick={(e) => { e.stopPropagation(); onToggleNotify() }}
+        style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px', color: isNotify ? '#534AB7' : '#ddd', flexShrink: 0 }}>
+        {isNotify ? '🔔' : '🔕'}
+      </button>
       <button
         onClick={(e) => { e.stopPropagation(); onToggleFav() }}
         style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', color: isFav ? '#EF9F27' : '#ddd', flexShrink: 0 }}>
@@ -111,6 +115,33 @@ const fetchFavorites = () => {
         body: JSON.stringify({ user_id: currentUser.id, type: 'dept', target_name: dept })
       }).then(() => fetchFavorites())
     }
+  }
+
+  const [notifyUsers, setNotifyUsers] = useState(() => {
+    const saved = localStorage.getItem('notify_users')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [notifyRooms, setNotifyRooms] = useState(() => {
+    const saved = localStorage.getItem('notify_rooms')
+    return saved ? JSON.parse(saved) : []
+  })
+
+  const toggleNotifyUser = (userId) => {
+    const isNotify = !notifyUsers.includes(userId)
+    const newList = isNotify ? [...notifyUsers, userId] : notifyUsers.filter(id => id !== userId)
+    setNotifyUsers(newList)
+    localStorage.setItem('notify_users', JSON.stringify(newList))
+    localStorage.setItem(`notify_dm_${userId}`, String(isNotify))
+    window.dispatchEvent(new Event('storage'))
+  }
+
+  const toggleNotifyRoom = (roomId) => {
+    const isNotify = !notifyRooms.includes(roomId)
+    const newList = isNotify ? [...notifyRooms, roomId] : notifyRooms.filter(id => id !== roomId)
+    setNotifyRooms(newList)
+    localStorage.setItem('notify_rooms', JSON.stringify(newList))
+    localStorage.setItem(`notify_room_${roomId}`, String(isNotify))
+    window.dispatchEvent(new Event('storage'))
   }
 
   const toggleCollapse = (dept) => {
@@ -248,6 +279,17 @@ const fetchFavorites = () => {
     }
   }
 
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = localStorage.getItem('notify_users')
+      if (saved) setNotifyUsers(JSON.parse(saved))
+      const savedRooms = localStorage.getItem('notify_rooms')
+      if (savedRooms) setNotifyRooms(JSON.parse(savedRooms))
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])  
+
 const [sharedFiles, setSharedFiles] = useState([])
 
 useEffect(() => {
@@ -317,6 +359,8 @@ useEffect(() => {
                     isFav={favUsers.includes(user.id)}
                     onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user); setUsers(prev => prev.map(u => u.id === user.id ? { ...u, unread_count: 0 } : u)) }}
                     onToggleFav={() => toggleFavUser(user.id)}
+                    isNotify={notifyUsers.includes(user.id)}
+                    onToggleNotify={() => toggleNotifyUser(user.id)}
                   />
                 ))}
               </div>
@@ -344,6 +388,8 @@ useEffect(() => {
                             isFav={true}
                             onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user); setUsers(prev => prev.map(u => u.id === user.id ? { ...u, unread_count: 0 } : u)) }}
                             onToggleFav={() => toggleFavUser(user.id)}
+                              isNotify={notifyUsers.includes(user.id)}
+                              onToggleNotify={() => toggleNotifyUser(user.id)}
                           />
                         ))}
                         <div style={{ height: '1px', background: '#eee', margin: '4px 0' }} />
@@ -366,7 +412,7 @@ useEffect(() => {
                                 <span style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 6px', background: '#534AB7', color: 'white', borderRadius: '8px' }}>내 부서</span>
                               )}
                             </span>
-                            <button onClick={(e) => { e.stopPropagation(); toggleFavDept(dept) }}
+                            <button onClick={() => toggleFavDept(dept)}
                               style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px' }}>
                               {favDepts.includes(dept) ? '⭐' : '☆'}
                             </button>
@@ -376,6 +422,8 @@ useEffect(() => {
                               isFav={favUsers.includes(user.id)}
                               onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user) }}
                               onToggleFav={() => toggleFavUser(user.id)}
+                              isNotify={notifyUsers.includes(user.id)}
+                              onToggleNotify={() => toggleNotifyUser(user.id)}
                             />
                           ))}
                         </div>
@@ -393,6 +441,8 @@ useEffect(() => {
                           isFav={favUsers.includes(user.id)}
                           onClick={() => { setOpenChat(user); setOpenRoom(null); onOpenChat?.(user) }}
                           onToggleFav={() => toggleFavUser(user.id)}
+                          isNotify={notifyUsers.includes(user.id)}
+                          onToggleNotify={() => toggleNotifyUser(user.id)}                        
                         />
                       ))}
                   </div>
@@ -440,6 +490,10 @@ useEffect(() => {
                     {room.lastMessage || `${room.members?.length || 0}명`}
                   </p>
                 </div>
+                <button onClick={(e) => { e.stopPropagation(); toggleNotifyRoom(room.id) }}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px', color: notifyRooms.includes(room.id) ? '#534AB7' : '#ddd', flexShrink: 0 }}>
+                  {notifyRooms.includes(room.id) ? '🔔' : '🔕'}
+                </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleFavRoom(room.id) }}
                   style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '13px', color: favRooms.includes(room.id) ? '#EF9F27' : '#ddd', flexShrink: 0 }}>

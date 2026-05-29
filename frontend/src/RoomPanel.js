@@ -25,6 +25,14 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
         ))
         return
       }
+      const notifyAll = localStorage.getItem('notify_all') !== 'false'
+      const notifyRoomItem = localStorage.getItem(`notify_room_${room.id}`) !== 'false'
+      if (notifyAll && notifyRoomItem && msg.sender_id !== currentUser.id) {
+        new Notification(room.name, {
+          body: msg.content,
+          icon: '/ilpoom.png'
+        })
+      }      
       setMessages((prev) => [...prev, {
         id: msg.id,
         sender_id: msg.sender_id,
@@ -91,6 +99,18 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const [notifyRoom, setNotifyRoom] = useState(
+    localStorage.getItem(`notify_room_${room.id}`) !== 'false'
+  )
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setNotifyRoom(localStorage.getItem(`notify_room_${room.id}`) !== 'false')
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [room.id])  
 
   const handleSend = () => {
     if (!input.trim()) return
@@ -169,6 +189,22 @@ function RoomPanel({ room, currentUser, onClose, onLeave, onHeaderMouseDown, isF
           onClick={() => setShowMembers(!showMembers)}
           style={{ border: 'none', background: showMembers ? '#EEEDFE' : 'transparent', cursor: 'pointer', fontSize: '12px', color: showMembers ? '#3C3489' : '#888', padding: '4px 8px', borderRadius: '6px' }}>
           👥 {room.members.length}명
+        </button>
+        <button onClick={(e) => {
+          e.stopPropagation()
+          const newVal = !notifyRoom
+          localStorage.setItem(`notify_room_${room.id}`, String(newVal))
+          const saved = localStorage.getItem('notify_rooms')
+          const notifyRooms = saved ? JSON.parse(saved) : []
+          const newList = newVal
+            ? [...notifyRooms, room.id]
+            : notifyRooms.filter(id => id !== room.id)
+          localStorage.setItem('notify_rooms', JSON.stringify(newList))
+          setNotifyRoom(newVal)
+          window.dispatchEvent(new Event('storage'))
+        }}
+          style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', color: notifyRoom ? '#534AB7' : '#bbb', padding: '4px 6px', borderRadius: '6px' }}>
+          {notifyRoom ? '🔔' : '🔕'}
         </button>
         <button onClick={() => { setShowSearch(prev => !prev); setMsgSearch('') }}
           style={{ border: 'none', background: showSearch ? '#EEEDFE' : 'transparent', cursor: 'pointer', fontSize: '14px', color: showSearch ? '#534AB7' : '#bbb', padding: '4px 6px', borderRadius: '6px' }}>

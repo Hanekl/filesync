@@ -8,11 +8,23 @@ function Login({ onLogin }) {
   const [showForgotPw, setShowForgotPw] = useState(false)
   const [showIpSetup, setShowIpSetup] = useState(false)
   const [ipInput, setIpInput] = useState('')
+  const [updateProgress, setUpdateProgress] = useState(null)
+  const [updateDownloaded, setUpdateDownloaded] = useState(false)
 
   useEffect(() => {
     const savedIp = localStorage.getItem('server_ip')
     if (!savedIp) setShowIpSetup(true)
     else setIpInput(savedIp)
+
+    const handleProgress = (e) => setUpdateProgress(e.detail)
+    const handleDownloaded = () => { setUpdateDownloaded(true); setUpdateProgress(null) }
+
+    window.addEventListener('update-progress', handleProgress)
+    window.addEventListener('update-downloaded', handleDownloaded)
+    return () => {
+      window.removeEventListener('update-progress', handleProgress)
+      window.removeEventListener('update-downloaded', handleDownloaded)
+    }
   }, [])
 
   const handleSaveIp = () => {
@@ -70,7 +82,34 @@ function Login({ onLogin }) {
 
   return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f8f8' }}>
-      <div style={{ background: 'white', border: '1px solid #eee', borderRadius: '16px', padding: '40px', width: '340px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+      {/* 업데이트 진행 카드 */}
+      {(updateProgress !== null || updateDownloaded) && (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', background: 'white', border: '1px solid #eee', borderRadius: '12px', padding: '14px 18px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 9999, minWidth: '220px' }}>
+          {updateDownloaded ? (
+            <>
+              <p style={{ fontSize: '13px', fontWeight: '500', color: '#333' }}>✅ 업데이트 준비 완료</p>
+              <p style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>앱을 재시작하면 적용돼요</p>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: '13px', fontWeight: '500', color: '#333' }}>🔄 업데이트 다운로드 중...</p>
+              <div style={{ marginTop: '8px', background: '#f0f0f0', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                <div style={{ width: `${updateProgress}%`, background: '#534AB7', height: '100%', borderRadius: '4px', transition: 'width 0.3s' }} />
+              </div>
+              <p style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>{updateProgress}%</p>
+            </>
+          )}
+        </div>
+      )}
+
+      <div style={{ position: 'relative', background: 'white', border: '1px solid #eee', borderRadius: '16px', padding: '40px', width: '340px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* 버전 표시 - 카드 우측 하단 모서리 */}
+        <span style={{ position: 'absolute', bottom: '10px', right: '14px', fontSize: '10px', color: '#ddd' }}>
+          v{window.__APP_VERSION__ || ''}
+        </span>
+
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
           <p style={{ fontSize: '22px', fontWeight: '500', color: '#3C3489' }}>FileSync</p>
           <p style={{ fontSize: '13px', color: '#aaa', marginTop: '4px' }}>기업 파일 관리 시스템</p>

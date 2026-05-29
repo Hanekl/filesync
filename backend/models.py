@@ -20,6 +20,8 @@ class User(Base):
     last_active = Column(DateTime, default=datetime.now)
     phone = Column(String, default="")
     email = Column(String, default="")
+    profile_picture = Column(String, default="")
+    bio = Column(String, default="")
 
     # 관계 설정
     messages = relationship("Message", back_populates="sender")

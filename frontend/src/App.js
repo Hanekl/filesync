@@ -33,6 +33,12 @@ function App() {
   const [workspaceFiles, setWorkspaceFiles] = useState([])
 
   useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  useEffect(() => {
     if (!currentUser) return
     fetch(`${getApiUrl()}/user-files/${currentUser.id}`)
       .then(r => r.json())

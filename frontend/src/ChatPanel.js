@@ -35,6 +35,14 @@ useEffect(() => {
           ))
           return
         }
+        const notifyAll = localStorage.getItem('notify_all') !== 'false'
+        const notifyDmUser = localStorage.getItem(`notify_dm_${user.id}`) !== 'false'
+        if (notifyAll && notifyDmUser && msg.sender_id !== currentUser.id) {
+          new Notification(user.name, {
+            body: msg.content,
+            icon: '/ilpoom.png'
+          })
+        }
         setMessages((prev) => [...prev, {
             id: msg.id,
             sender: msg.sender_id === currentUser.id ? currentUser.name : user.name,
@@ -102,6 +110,18 @@ useEffect(() => {
   useEffect(() => { 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages]) 
+
+  const [notifyDm, setNotifyDm] = useState(
+    localStorage.getItem(`notify_dm_${user.id}`) !== 'false'
+  )
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setNotifyDm(localStorage.getItem(`notify_dm_${user.id}`) !== 'false')
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [user.id])
 
   const handleSend = () => {
     if (!input.trim()) return
@@ -173,6 +193,22 @@ useEffect(() => {
             {isFav ? '★' : '☆'}
           </button>
         </span>
+        <button onClick={(e) => {
+          e.stopPropagation()
+          const newVal = !notifyDm
+          localStorage.setItem(`notify_dm_${user.id}`, String(newVal))
+          const saved = localStorage.getItem('notify_users')
+          const notifyUsers = saved ? JSON.parse(saved) : []
+          const newList = newVal 
+            ? [...notifyUsers, user.id] 
+            : notifyUsers.filter(id => id !== user.id)
+          localStorage.setItem('notify_users', JSON.stringify(newList))
+          setNotifyDm(newVal)
+          window.dispatchEvent(new Event('storage'))
+        }}
+          style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '14px', color: notifyDm ? '#534AB7' : '#bbb', padding: '4px 6px', borderRadius: '6px' }}>
+          {notifyDm ? '🔔' : '🔕'}
+        </button>
         <button onClick={() => { setShowSearch(prev => !prev); setMsgSearch('') }}
           style={{ border: 'none', background: showSearch ? '#EEEDFE' : 'transparent', cursor: 'pointer', fontSize: '14px', color: showSearch ? '#534AB7' : '#bbb', padding: '4px 6px', borderRadius: '6px' }}>
           🔍

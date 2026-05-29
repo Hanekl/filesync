@@ -44,6 +44,8 @@ with engine.connect() as conn:
         "ALTER TABLE files ADD COLUMN parent_id VARCHAR",
         "ALTER TABLE files ADD COLUMN version INTEGER DEFAULT 1",
         "ALTER TABLE user_files ADD COLUMN is_home BOOLEAN DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN profile_picture VARCHAR DEFAULT ''",
+        "ALTER TABLE users ADD COLUMN bio VARCHAR DEFAULT ''",
     ]:
         try:
             conn.execute(text(sql))
@@ -172,7 +174,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             "grade": db_user.grade,
             "is_first_login": db_user.is_first_login,
             "phone": db_user.phone or "",
-            "email": db_user.email or ""
+            "email": db_user.email or "",
+            "profile_picture": db_user.profile_picture or "",
+            "bio": db_user.bio or ""
         }
     }
 
@@ -220,23 +224,25 @@ class ProfileUpdate(BaseModel):
     phone: str
     email: str
     username: str
+    bio: str = ""
 
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str
 
 # 프로필 업데이트
-@app.put("/users/profile/{user_id}")
-def update_profile(user_id: int, data: ProfileUpdate, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="유저를 찾을 수 없어요")
-    user.name = data.name
-    user.phone = data.phone
-    user.email = data.email
-    user.username = data.username
-    db.commit()
-    return { "message": "프로필 업데이트 완료" }
+    @app.put("/users/profile/{user_id}")
+    def update_profile(user_id: int, data: ProfileUpdate, db: Session = Depends(get_db)):
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="유저를 찾을 수 없어요")
+        user.name = data.name
+        user.phone = data.phone
+        user.email = data.email
+        user.username = data.username
+        user.bio = data.bio
+        db.commit()
+        return { "message": "프로필 업데이트 완료" }
 
 # 비밀번호 변경
 @app.put("/users/password/{user_id}")
@@ -1445,6 +1451,32 @@ def get_clustering(grade: str, db: Session = Depends(get_db)):
             "tag_name": info["tag_name"]
         })
     return {"clusters": clusters_out}
+
+# ===================== 프로필 사진 API ==========================
+
+PROFILE_PIC_DIR = "profile_pics"
+os.makedirs(PROFILE_PIC_DIR, exist_ok=True)
+app.mount("/profile_pics", StaticFiles(directory=PROFILE_PIC_DIR), name="profile_pics")
+
+@app.post("/users/profile-picture/{user_id}")
+async def upload_profile_picture(user_id: int, file: UploadFile = FastAPIFile(...), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="유저를 찾을 수 없어요")
+    ext = file.filename.split('.')[-1].lower()
+    if ext not in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
+        raise HTTPException(status_code=400, detail="이미지 파일만 업로드 가능해요")
+    filename = f"{uuid.uuid4()}.{ext}"
+    filepath = os.path.join(PROFILE_PIC_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(await file.read())
+    if user.profile_picture:
+        old_path = os.path.join(PROFILE_PIC_DIR, user.profile_picture)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    user.profile_picture = filename
+    db.commit()
+    return {"profile_picture": filename}
 
 # ==================== 서버 실행 확인 ====================
 

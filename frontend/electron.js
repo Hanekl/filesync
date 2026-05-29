@@ -2,7 +2,18 @@ const { app, BrowserWindow } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 
-console.log('isPackaged:', app.isPackaged)
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -14,8 +25,7 @@ function createWindow() {
     }
   })
 
-  const isDev = !app.isPackaged
-  if (isDev) {
+  if (!app.isPackaged) {
     win.loadURL('http://localhost:3000')
   } else {
     win.loadFile(path.join(__dirname, 'build', 'index.html'))
@@ -24,52 +34,31 @@ function createWindow() {
   return win
 }
 
-  const gotTheLock = app.requestSingleInstanceLock()
-
-  if (!gotTheLock) {
-    app.quit()
-  } else {
-    app.on('second-instance', () => {
-      if (win) {
-        if (win.isMinimized()) win.restore()
-        win.focus()
-      }
-    })
-  }
-
 app.whenReady().then(() => {
   const win = createWindow()
 
-  if (app.isPackaged) {
-    console.log('업데이트 체크 시작')
-    autoUpdater.checkForUpdatesAndNotify()
+  win.webContents.on('did-finish-load', () => { 
+    win.webContents.executeJavaScript(`window.__APP_VERSION__ = '${app.getVersion()}'`)
+  })
 
-    autoUpdater.on('checking-for-update', () => {
-      console.log('업데이트 확인 중...')
-    })
+  autoUpdater.checkForUpdatesAndNotify()
 
-    autoUpdater.on('update-not-available', () => {
-      console.log('최신 버전이에요')
-    })
+  autoUpdater.on('download-progress', (progressObj) => {
+    win.webContents.executeJavaScript(`
+      window.dispatchEvent(new CustomEvent('update-progress', { detail: ${progressObj.percent.toFixed(0)} }))
+    `)
+  })
 
-    autoUpdater.on('error', (err) => {
-      console.log('업데이트 오류:', err)
-    })
+  autoUpdater.on('update-downloaded', () => {
+    win.webContents.executeJavaScript(`
+      window.dispatchEvent(new CustomEvent('update-downloaded'))
+    `)
+    setTimeout(() => autoUpdater.quitAndInstall(), 3000)
+  })
 
-    autoUpdater.on('update-available', () => {
-      win.webContents.executeJavaScript(`alert('새 업데이트가 있어요! 다운로드 중...')`)
-    })
-
-    autoUpdater.on('update-downloaded', () => {
-      win.webContents.executeJavaScript(`
-        if (confirm('업데이트가 완료됐어요. 지금 재시작할까요?')) {
-          window.__restartApp = true
-        }
-      `).then(() => {
-        autoUpdater.quitAndInstall()
-      })
-    })
-  }
+  autoUpdater.on('error', (err) => {
+    win.webContents.executeJavaScript(`console.log('업데이트 오류: ${err.message}')`)
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

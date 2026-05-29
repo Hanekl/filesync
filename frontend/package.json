@@ -1,6 +1,6 @@
 {
   "name": "filesync",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "private": true,
   "main": "electron.js",
   "homepage": "./",
@@ -63,7 +63,13 @@
       "main": "electron.js"
     },
     "win": {
-      "target": "portable"
+      "target": "nsis",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "publish": {
       "provider": "github",
