@@ -1,13 +1,14 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 
 const gotTheLock = app.requestSingleInstanceLock()
+let win = null
 
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', (event, commandLine, workingDirectory, additionalData) => {
+  app.on('second-instance', () => {
     if (win) {
       if (win.isMinimized()) win.restore()
       win.focus()
@@ -16,14 +17,19 @@ if (!gotTheLock) {
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1280,
     height: 800,
+    minWidth: 1152,
+    minHeight: 720,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   })
+
+  win.setMenu(null)
 
   if (!app.isPackaged) {
     win.loadURL('http://localhost:3000')
@@ -35,10 +41,39 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  const win = createWindow()
+  win = createWindow()
 
-  win.webContents.on('did-finish-load', () => { 
+  win.webContents.on('did-finish-load', () => {
     win.webContents.executeJavaScript(`window.__APP_VERSION__ = '${app.getVersion()}'`)
+  })
+
+  // 창 닫힐 때 오프라인 처리
+  win.on('close', () => {
+    win.webContents.executeJavaScript(`
+      (() => {
+        const ip = localStorage.getItem('server_ip')
+        const base = ip ? 'http://' + ip + ':8000' : 'http://127.0.0.1:8000'
+        const user = window.__CURRENT_USER__
+        if (user) navigator.sendBeacon(base + '/users/logout/' + user.id)
+      })()
+    `).catch(() => {})
+  })
+
+  // 창 크기 변경 (프리셋)
+  ipcMain.on('resize-window', (event, { width, height }) => {
+    if (win) {
+      win.setSize(width, height)
+      win.center()
+    }
+  })
+
+  // 현재 창 크기 조회
+  ipcMain.handle('get-window-size', () => {
+    if (win) {
+      const [width, height] = win.getSize()
+      return { width, height }
+    }
+    return { width: 1280, height: 800 }
   })
 
   autoUpdater.checkForUpdatesAndNotify()
